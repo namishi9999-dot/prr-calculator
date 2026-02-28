@@ -199,6 +199,75 @@
     .field.has-error input { border-color: #e53e3e; }
     .field.has-error .error { display: block; }
 
+    /* ── ΔBV 符号トグル ── */
+    .deltabv-wrap {
+      display: flex;
+      align-items: stretch;
+      border: 2px solid #e2e8f0;
+      border-radius: 9px;
+      overflow: hidden;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      background: #fafafa;
+    }
+    .deltabv-wrap.focused {
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49,130,206,0.15);
+      background: #fff;
+    }
+    #f-deltaBV.has-error .deltabv-wrap { border-color: #e53e3e; }
+
+    .sign-btn {
+      width: 52px;
+      flex-shrink: 0;
+      border: none;
+      border-right: 2px solid #e2e8f0;
+      cursor: pointer;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .sign-btn.is-neg {
+      background: #fff5f5;
+      color: #e53e3e;
+      border-right-color: #fed7d7;
+    }
+    .sign-btn.is-pos {
+      background: #f0fff4;
+      color: #276749;
+      border-right-color: #c6f6d5;
+    }
+    .sign-btn:active { opacity: 0.7; }
+
+    .deltabv-wrap input {
+      flex: 1;
+      min-width: 0;
+      padding: 11px 52px 11px 10px;
+      border: none;
+      font-size: 17px;
+      font-family: inherit;
+      color: #1a202c;
+      outline: none;
+      background: transparent;
+    }
+    .deltabv-wrap .unit {
+      position: absolute;
+      right: 14px;
+      font-size: 13px;
+      color: #a0aec0;
+      pointer-events: none;
+      font-weight: 600;
+    }
+    .deltabv-inner {
+      position: relative;
+      flex: 1;
+      display: flex; align-items: center;
+    }
+
     /* ── Button ── */
     .calc-btn {
       display: block; width: 100%; padding: 15px;
@@ -339,11 +408,19 @@
 
   <div class="field" id="f-deltaBV">
     <label>ΔBV％ <span class="en">血液量変化率</span></label>
-    <div class="input-wrap">
-      <input type="number" id="deltaBV" placeholder="例：-8.5" step="0.1" inputmode="decimal">
-      <span class="unit">%</span>
+    <div class="deltabv-wrap" id="deltabv-wrap">
+      <!-- 符号トグルボタン：タップで＋／－を切替 -->
+      <button type="button" class="sign-btn is-neg" id="sign-btn"
+              onclick="toggleSign()" aria-label="符号切替">−</button>
+      <div class="deltabv-inner">
+        <input type="number" id="deltaBV" placeholder="8.5" step="0.1" min="0"
+               inputmode="decimal"
+               onfocus="document.getElementById('deltabv-wrap').classList.add('focused')"
+               onblur="document.getElementById('deltabv-wrap').classList.remove('focused')">
+        <span class="unit">%</span>
+      </div>
     </div>
-    <div class="hint">治療開始時を基準とした血液量の変化率（減少時は負の値）</div>
+    <div class="hint">左のボタンで＋／－を切替 → 絶対値を入力（iPhoneでも入力可）</div>
     <div class="error" id="err-deltaBV">ΔBV%を入力してください</div>
   </div>
 
@@ -409,6 +486,15 @@
 <script>
   /* ─── 状態 ─── */
   let currentMethod = 'div13';   // 'div13' | 'pct'
+  let deltaBVNeg    = true;      // ΔBV% の符号（透析中は通常マイナス）
+
+  /* ─── 符号トグル ─── */
+  function toggleSign() {
+    deltaBVNeg = !deltaBVNeg;
+    const btn = document.getElementById('sign-btn');
+    btn.textContent  = deltaBVNeg ? '−' : '+';
+    btn.className    = 'sign-btn ' + (deltaBVNeg ? 'is-neg' : 'is-pos');
+  }
 
   /* ─── 算出方法の切替 ─── */
   function selectMethod(m) {
@@ -458,14 +544,16 @@
     const weightRaw  = document.getElementById('weight').value;
     const pctRaw     = document.getElementById('pct').value;
 
-    const deltaBV = parseFloat(deltaBVRaw);
+    // 絶対値に符号を付ける
+    const absVal  = parseFloat(deltaBVRaw);
+    const deltaBV = isNaN(absVal) ? NaN : (deltaBVNeg ? -Math.abs(absVal) : Math.abs(absVal));
     const time    = parseFloat(timeRaw);
     const weight  = parseFloat(weightRaw);
     const pct     = parseFloat(pctRaw);
 
     let ok = true;
     ok = validate('weight',  weightRaw  !== '' && !isNaN(weight)  && weight > 0) && ok;
-    ok = validate('deltaBV', deltaBVRaw !== '' && !isNaN(deltaBV)) && ok;
+    ok = validate('deltaBV', deltaBVRaw !== '' && !isNaN(absVal)) && ok;
     ok = validate('time',    timeRaw    !== '' && !isNaN(time)    && time > 0)   && ok;
 
     if (currentMethod === 'pct' && (isNaN(pct) || pct <= 0)) {
