@@ -279,6 +279,19 @@
     .calc-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(49,130,206,0.4); }
     .calc-btn:active { transform: translateY(0); }
 
+    /* ── Reset Button ── */
+    .reset-btn {
+      display: block; width: 100%; padding: 12px;
+      background: #fff;
+      color: #718096; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; letter-spacing: 0.06em;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      margin-top: 10px;
+    }
+    .reset-btn:hover { background: #fff5f5; border-color: #fc8181; color: #c53030; }
+    .reset-btn:active { background: #fed7d7; }
+
     /* ── Divider ── */
     .divider { border: none; border-top: 1px solid #e2e8f0; margin: 26px 0; }
 
@@ -430,6 +443,7 @@
   </div>
 
   <button class="calc-btn" onclick="calculate()">計　算</button>
+  <button class="reset-btn" onclick="resetAll()">↺ リセット</button>
 
   <!-- Result -->
   <div id="result">
@@ -615,6 +629,34 @@
 
     document.getElementById('result').style.display = 'block';
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* ─── リセット ─── */
+  function resetAll() {
+    // 入力値をクリア
+    document.getElementById('deltaBV').value = '';
+    document.getElementById('time').value    = '';
+    document.getElementById('weight').value  = '';
+
+    // 符号をデフォルト（マイナス）に戻す
+    deltaBVNeg = true;
+    const btn = document.getElementById('sign-btn');
+    btn.textContent = '−';
+    btn.className   = 'sign-btn is-neg';
+
+    // エラー表示を消す
+    ['deltaBV', 'time', 'weight'].forEach(id => {
+      document.getElementById('f-' + id).classList.remove('has-error');
+    });
+
+    // BVプレビューを消す
+    document.getElementById('bv-preview').classList.remove('visible');
+
+    // 結果を非表示
+    document.getElementById('result').style.display = 'none';
+
+    // 先頭にスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /* Enter キーで計算 */
