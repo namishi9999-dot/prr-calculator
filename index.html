@@ -246,7 +246,7 @@
     .deltabv-wrap input {
       flex: 1;
       min-width: 0;
-      padding: 11px 52px 11px 10px;
+      padding: 11px 6px 11px 10px;
       border: none;
       font-size: 17px;
       font-family: inherit;
@@ -254,18 +254,15 @@
       outline: none;
       background: transparent;
     }
-    .deltabv-wrap .unit {
-      position: absolute;
-      right: 14px;
+    .deltabv-unit {
+      padding: 0 14px 0 2px;
       font-size: 13px;
       color: #a0aec0;
-      pointer-events: none;
       font-weight: 600;
-    }
-    .deltabv-inner {
-      position: relative;
-      flex: 1;
-      display: flex; align-items: center;
+      white-space: nowrap;
+      align-self: center;
+      flex-shrink: 0;
+      pointer-events: none;
     }
 
     /* ── Button ── */
@@ -412,13 +409,11 @@
       <!-- 符号トグルボタン：タップで＋／－を切替 -->
       <button type="button" class="sign-btn is-neg" id="sign-btn"
               onclick="toggleSign()" aria-label="符号切替">−</button>
-      <div class="deltabv-inner">
-        <input type="number" id="deltaBV" placeholder="8.5" step="0.1" min="0"
-               inputmode="decimal"
-               onfocus="document.getElementById('deltabv-wrap').classList.add('focused')"
-               onblur="document.getElementById('deltabv-wrap').classList.remove('focused')">
-        <span class="unit">%</span>
-      </div>
+      <input type="number" id="deltaBV" placeholder="8.5" step="0.1" min="0"
+             inputmode="decimal"
+             onfocus="document.getElementById('deltabv-wrap').classList.add('focused')"
+             onblur="document.getElementById('deltabv-wrap').classList.remove('focused')">
+      <span class="deltabv-unit">%</span>
     </div>
     <div class="hint">左のボタンで＋／－を切替 → 絶対値を入力（iPhoneでも入力可）</div>
     <div class="error" id="err-deltaBV">ΔBV%を入力してください</div>
