@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PRR計算 - プラズマリフィリングレート</title>
+
+  <!-- ── PWA ── -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2b6cb0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="PRR計算">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+  <meta name="description" content="透析治療用プラズマリフィリングレート計算ツール">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Yu Gothic', 'メイリオ', Meiryo, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #e8f4fd 0%, #dce8f5 100%);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 20px) env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 20px);
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(30, 60, 100, 0.12);
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 28px; }
+    .header .icon-wrap {
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, #2b6cb0, #3182ce);
+      border-radius: 14px;
+      margin: 0 auto 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .header .icon-wrap svg { width: 28px; height: 28px; fill: white; }
+    .header h1 { font-size: 19px; font-weight: 700; color: #1a365d; line-height: 1.4; }
+    .header .subtitle { font-size: 12px; color: #718096; margin-top: 4px; letter-spacing: 0.05em; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #a0aec0;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    /* ── BV Method Selector ── */
+    .method-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .method-btn {
+      padding: 12px 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fafafa;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+      user-select: none;
+    }
+    .method-btn:hover { border-color: #90cdf4; background: #ebf8ff; }
+    .method-btn.active {
+      border-color: #3182ce;
+      background: #ebf8ff;
+      box-shadow: 0 0 0 3px rgba(49,130,206,0.12);
+    }
+    .method-btn .mb-formula {
+      font-size: 17px;
+      font-weight: 800;
+      color: #2b6cb0;
+      line-height: 1.2;
+    }
+    .method-btn.active .mb-formula { color: #1a365d; }
+    .method-btn .mb-desc {
+      font-size: 11px;
+      color: #718096;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* ── Percent input (method 2) ── */
+    .pct-row {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: #ebf8ff;
+      border: 2px solid #bee3f8;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .pct-row.visible { display: flex; }
+    .pct-row label { font-size: 13px; font-weight: 700; color: #2c5282; white-space: nowrap; }
+    .pct-row .pct-input-wrap {
+      position: relative;
+      display: flex; align-items: center;
+      flex: 1;
+    }
+    .pct-row input[type="number"] {
+      width: 100%;
+      padding: 9px 38px 9px 12px;
+      border: 2px solid #90cdf4;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+      color: #1a202c;
+      outline: none;
+      background: white;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .pct-row input[type="number"]:focus {
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49,130,206,0.15);
+    }
+    .pct-row .pct-unit {
+      position: absolute;
+      right: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #3182ce;
+      pointer-events: none;
+    }
+    .pct-row .pct-hint {
+      font-size: 11px;
+      color: #4a90d9;
+      white-space: nowrap;
+    }
+    .field.has-error .pct-row input { border-color: #e53e3e; }
+
+    /* BV preview chip */
+    .bv-preview {
+      background: #f0fff4;
+      border: 1.5px solid #c6f6d5;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: #276749;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .bv-preview.visible { display: block; }
+
+    /* ── Form fields ── */
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 5px;
+    }
+    .field label .en {
+      font-weight: 400;
+      color: #a0aec0;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .input-wrap {
+      position: relative;
+      display: flex; align-items: center;
+    }
+    .input-wrap input {
+      width: 100%;
+      padding: 11px 60px 11px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 9px;
+      font-size: 17px;
+      font-family: inherit;
+      color: #1a202c;
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      background: #fafafa;
+    }
+    .input-wrap input:focus {
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49,130,206,0.15);
+      background: #fff;
+    }
+    .input-wrap .unit {
+      position: absolute;
+      right: 14px;
+      font-size: 13px;
+      color: #a0aec0;
+      pointer-events: none;
+      font-weight: 600;
+    }
+    .field .hint { font-size: 11px; color: #a0aec0; margin-top: 4px; }
+    .field .error { font-size: 12px; color: #e53e3e; margin-top: 4px; display: none; }
+    .field.has-error input { border-color: #e53e3e; }
+    .field.has-error .error { display: block; }
+
+    /* ── ΔBV 符号トグル ── */
+    .deltabv-wrap {
+      display: flex;
+      align-items: stretch;
+      border: 2px solid #e2e8f0;
+      border-radius: 9px;
+      overflow: hidden;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      background: #fafafa;
+    }
+    .deltabv-wrap.focused {
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49,130,206,0.15);
+      background: #fff;
+    }
+    #f-deltaBV.has-error .deltabv-wrap { border-color: #e53e3e; }
+
+    .sign-btn {
+      width: 52px;
+      flex-shrink: 0;
+      border: none;
+      border-right: 2px solid #e2e8f0;
+      cursor: pointer;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .sign-btn.is-neg {
+      background: #fff5f5;
+      color: #e53e3e;
+      border-right-color: #fed7d7;
+    }
+    .sign-btn.is-pos {
+      background: #f0fff4;
+      color: #276749;
+      border-right-color: #c6f6d5;
+    }
+    .sign-btn:active { opacity: 0.7; }
+
+    .deltabv-wrap input {
+      flex: 1;
+      min-width: 0;
+      padding: 11px 6px 11px 10px;
+      border: none;
+      font-size: 17px;
+      font-family: inherit;
+      color: #1a202c;
+      outline: none;
+      background: transparent;
+    }
+    .deltabv-unit {
+      padding: 0 14px 0 2px;
+      font-size: 13px;
+      color: #a0aec0;
+      font-weight: 600;
+      white-space: nowrap;
+      align-self: center;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    /* ── Button ── */
+    .calc-btn {
+      display: block; width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #2b6cb0, #3182ce);
+      color: white; border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 700; font-family: inherit;
+      cursor: pointer; letter-spacing: 0.08em;
+      transition: transform 0.1s, box-shadow 0.1s;
+      box-shadow: 0 4px 14px rgba(49,130,206,0.35);
+      margin-top: 6px;
+    }
+    .calc-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(49,130,206,0.4); }
+    .calc-btn:active { transform: translateY(0); }
+
+    /* ── Reset Button ── */
+    .reset-btn {
+      display: block; width: 100%; padding: 12px;
+      background: #fff;
+      color: #718096; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; letter-spacing: 0.06em;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      margin-top: 10px;
+    }
+    .reset-btn:hover { background: #fff5f5; border-color: #fc8181; color: #c53030; }
+    .reset-btn:active { background: #fed7d7; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #e2e8f0; margin: 26px 0; }
+
+    /* ── Result ── */
+    #result { display: none; }
+    .result-title {
+      font-size: 12px; font-weight: 700; color: #718096;
+      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px;
+    }
+    .result-cards {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 16px;
+    }
+    .result-card {
+      border-radius: 12px; padding: 16px 14px;
+      text-align: center; border: 2px solid transparent;
+    }
+    .result-card.negative { background: #fff5f5; border-color: #fed7d7; }
+    .result-card.neutral  { background: #f0fff4; border-color: #c6f6d5; }
+    .result-card .rc-label { font-size: 11px; font-weight: 600; color: #718096; margin-bottom: 8px; line-height: 1.4; }
+    .result-card .rc-value { font-size: 30px; font-weight: 800; line-height: 1; }
+    .result-card.negative .rc-value { color: #c53030; }
+    .result-card.neutral  .rc-value { color: #276749; }
+    .result-card .rc-unit { font-size: 12px; font-weight: 600; margin-top: 4px; }
+    .result-card.negative .rc-unit { color: #fc8181; }
+    .result-card.neutral  .rc-unit { color: #48bb78; }
+
+    /* ── Detail box ── */
+    .detail-box {
+      background: #f7fafc; border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 14px;
+    }
+    .detail-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 0; font-size: 13px; color: #4a5568;
+      border-bottom: 1px solid #edf2f7;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .dv { font-weight: 700; color: #2d3748; }
+
+    /* ── Method used tag ── */
+    .method-tag {
+      display: inline-block;
+      background: #ebf8ff; color: #2b6cb0;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      border: 1px solid #bee3f8;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── Status badge ── */
+    .status-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 9px;
+      font-size: 13px; font-weight: 600; margin-bottom: 14px;
+    }
+    .status-badge.dec  { background: #fff5f5; color: #c53030; }
+    .status-badge.inc  { background: #f0fff4; color: #276749; }
+    .status-badge.zero { background: #f0f4f8; color: #4a5568; }
+    .status-badge .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-badge.dec .dot  { background: #fc8181; }
+    .status-badge.inc .dot  { background: #68d391; }
+    .status-badge.zero .dot { background: #a0aec0; }
+
+    /* ── Note ── */
+    .note {
+      font-size: 11px; color: #a0aec0; line-height: 1.9;
+      border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 4px;
+    }
+
+    /* ── PWA install banner ── */
+    .pwa-badge {
+      text-align: center;
+      margin-top: 20px;
+      padding: 8px 14px;
+      background: #f0f4f8;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #718096;
+      line-height: 1.6;
+    }
+    .pwa-badge strong { color: #2d3748; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="icon-wrap">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/><path d="M7 6h10v1H7zm0 11h10v1H7z" opacity=".4"/></svg>
+    </div>
+    <h1>プラズマリフィリングレート計算</h1>
+    <div class="subtitle">Plasma Refilling Rate (PRR) Calculator</div>
+  </div>
+
+  <!-- ① 循環血液量 算出方法 -->
+  <div class="section-label">① 循環血液量（BV₀）の算出方法</div>
+
+  <div class="method-selector">
+    <div class="method-btn active" id="btn-div13" onclick="selectMethod('div13')">
+      <div class="mb-formula">体重 ÷ 13</div>
+      <div class="mb-desc">標準的な推算式<br>BV(L) = 体重(kg) ÷ 13</div>
+    </div>
+    <div class="method-btn" id="btn-pct" onclick="selectMethod('pct')">
+      <div class="mb-formula">体重の X %</div>
+      <div class="mb-desc">割合を指定<br>BV(mL) = 体重 × X%</div>
+    </div>
+  </div>
+
+  <!-- パーセント入力 (method 2) -->
+  <div class="pct-row" id="pct-row">
+    <label>体重の</label>
+    <div class="pct-input-wrap">
+      <input type="number" id="pct" value="8" step="0.1" min="1" max="20" inputmode="decimal" oninput="updateBvPreview()">
+      <span class="pct-unit">%</span>
+    </div>
+    <span class="pct-hint">を循環血液量とする</span>
+  </div>
+
+  <!-- BV プレビュー -->
+  <div class="bv-preview" id="bv-preview"></div>
+
+  <!-- ② 患者情報 -->
+  <div class="section-label">② 患者情報・測定値</div>
+
+  <div class="field" id="f-weight">
+    <label>体重 <span class="en">本日の透析前体重</span></label>
+    <div class="input-wrap">
+      <input type="number" id="weight" placeholder="例：60.5" step="0.1" min="1" inputmode="decimal" oninput="updateBvPreview()">
+      <span class="unit">kg</span>
+    </div>
+    <div class="hint">本日の患者体重（循環血液量の推算に使用）</div>
+    <div class="error" id="err-weight">体重を正しく入力してください</div>
+  </div>
+
+  <div class="field" id="f-deltaBV">
+    <label>ΔBV％ <span class="en">血液量変化率</span></label>
+    <div class="deltabv-wrap" id="deltabv-wrap">
+      <!-- 符号トグルボタン：タップで＋／－を切替 -->
+      <button type="button" class="sign-btn is-neg" id="sign-btn"
+              onclick="toggleSign()" aria-label="符号切替">−</button>
+      <input type="number" id="deltaBV" placeholder="8.5" step="0.1" min="0"
+             inputmode="decimal"
+             onfocus="document.getElementById('deltabv-wrap').classList.add('focused')"
+             onblur="document.getElementById('deltabv-wrap').classList.remove('focused')">
+      <span class="deltabv-unit">%</span>
+    </div>
+    <div class="hint">左のボタンで＋／－を切替 → 絶対値を入力（iPhoneでも入力可）</div>
+    <div class="error" id="err-deltaBV">ΔBV%を入力してください</div>
+  </div>
+
+  <div class="field" id="f-time">
+    <label>経過時間 <span class="en">治療開始からの時間</span></label>
+    <div class="input-wrap">
+      <input type="number" id="time" placeholder="例：2.5" step="0.1" min="0.01" inputmode="decimal">
+      <span class="unit">時間</span>
+    </div>
+    <div class="hint">治療開始から現在のΔBV%測定までの時間</div>
+    <div class="error" id="err-time">0より大きい値を入力してください</div>
+  </div>
+
+  <button class="calc-btn" onclick="calculate()">計　算</button>
+  <button class="reset-btn" onclick="resetAll()">↺ リセット</button>
+
+  <!-- Result -->
+  <div id="result">
+    <hr class="divider">
+    <div class="result-title">計算結果 / Results</div>
+
+    <div class="result-cards">
+      <div class="result-card" id="card-hr">
+        <div class="rc-label">プラズマリフィリングレート<br>1時間あたり</div>
+        <div class="rc-value" id="prrHr">—</div>
+        <div class="rc-unit">mL / hour</div>
+      </div>
+      <div class="result-card" id="card-min">
+        <div class="rc-label">プラズマリフィリングレート<br>1分あたり</div>
+        <div class="rc-value" id="prrMin">—</div>
+        <div class="rc-unit">mL / min</div>
+      </div>
+    </div>
+
+    <div class="status-badge" id="status-badge">
+      <span class="dot"></span>
+      <span id="status-text"></span>
+    </div>
+
+    <div class="detail-box">
+      <div class="detail-row">
+        <span>循環血液量 (BV₀) <span class="method-tag" id="d-method-tag">—</span></span>
+        <span class="dv" id="d-bv0">—</span>
+      </div>
+      <div class="detail-row">
+        <span>血液量変化量 (ΔBV)</span>
+        <span class="dv" id="d-deltaBV-val">—</span>
+      </div>
+      <div class="detail-row">
+        <span>ΔBV%</span>
+        <span class="dv" id="d-deltaBV-pct">—</span>
+      </div>
+      <div class="detail-row">
+        <span>経過時間</span>
+        <span class="dv" id="d-time">—</span>
+      </div>
+    </div>
+
+    <div class="note" id="result-note"></div>
+  </div>
+
+  <!-- PWA install hint -->
+  <div class="pwa-badge" id="pwa-badge">
+    <strong>オフライン対応アプリ</strong><br>
+    ホーム画面に追加するとアプリとして使えます
+  </div>
+
+</div>
+
+<script>
+  /* ─── 状態 ─── */
+  let currentMethod = 'div13';   // 'div13' | 'pct'
+  let deltaBVNeg    = true;      // ΔBV% の符号（透析中は通常マイナス）
+
+  /* ─── 符号トグル ─── */
+  function toggleSign() {
+    deltaBVNeg = !deltaBVNeg;
+    const btn = document.getElementById('sign-btn');
+    btn.textContent  = deltaBVNeg ? '−' : '+';
+    btn.className    = 'sign-btn ' + (deltaBVNeg ? 'is-neg' : 'is-pos');
+  }
+
+  /* ─── 算出方法の切替 ─── */
+  function selectMethod(m) {
+    currentMethod = m;
+    document.getElementById('btn-div13').classList.toggle('active', m === 'div13');
+    document.getElementById('btn-pct').classList.toggle('active',   m === 'pct');
+    document.getElementById('pct-row').classList.toggle('visible',  m === 'pct');
+    updateBvPreview();
+  }
+
+  /* ─── BV プレビュー ─── */
+  function updateBvPreview() {
+    const w = parseFloat(document.getElementById('weight').value);
+    const preview = document.getElementById('bv-preview');
+    if (isNaN(w) || w <= 0) { preview.classList.remove('visible'); return; }
+
+    const bv = calcBV(w);
+    const methodLabel = currentMethod === 'div13'
+      ? `体重(${w} kg) ÷ 13`
+      : `体重(${w} kg) × ${document.getElementById('pct').value || '?'} %`;
+    preview.textContent = `推算 循環血液量 = ${bv.toFixed(0)} mL（${(bv/1000).toFixed(3)} L） ← ${methodLabel}`;
+    preview.classList.add('visible');
+  }
+
+  /* ─── BV 計算 ─── */
+  function calcBV(weight) {
+    if (currentMethod === 'div13') {
+      return (weight / 13) * 1000;   // kg÷13 → L → mL
+    } else {
+      const p = parseFloat(document.getElementById('pct').value);
+      return weight * (p / 100) * 1000;  // kg × (X/100) → L → mL
+    }
+  }
+
+  /* ─── バリデーション ─── */
+  function validate(id, check) {
+    const field = document.getElementById('f-' + id);
+    if (!check) { field.classList.add('has-error'); return false; }
+    field.classList.remove('has-error');
+    return true;
+  }
+
+  /* ─── 計算実行 ─── */
+  function calculate() {
+    const deltaBVRaw = document.getElementById('deltaBV').value;
+    const timeRaw    = document.getElementById('time').value;
+    const weightRaw  = document.getElementById('weight').value;
+    const pctRaw     = document.getElementById('pct').value;
+
+    // 絶対値に符号を付ける
+    const absVal  = parseFloat(deltaBVRaw);
+    const deltaBV = isNaN(absVal) ? NaN : (deltaBVNeg ? -Math.abs(absVal) : Math.abs(absVal));
+    const time    = parseFloat(timeRaw);
+    const weight  = parseFloat(weightRaw);
+    const pct     = parseFloat(pctRaw);
+
+    let ok = true;
+    ok = validate('weight',  weightRaw  !== '' && !isNaN(weight)  && weight > 0) && ok;
+    ok = validate('deltaBV', deltaBVRaw !== '' && !isNaN(absVal)) && ok;
+    ok = validate('time',    timeRaw    !== '' && !isNaN(time)    && time > 0)   && ok;
+
+    if (currentMethod === 'pct' && (isNaN(pct) || pct <= 0)) {
+      document.getElementById('pct').style.borderColor = '#e53e3e';
+      ok = false;
+    } else {
+      document.getElementById('pct').style.borderColor = '';
+    }
+
+    if (!ok) {
+      document.getElementById('result').style.display = 'none';
+      return;
+    }
+
+    /* ── 計算 ── */
+    const BV0    = calcBV(weight);                  // mL
+    const deltaBVml = (deltaBV / 100) * BV0;        // mL
+    const prrHr  = deltaBVml / time;                // mL/hr
+    const prrMin = prrHr / 60;                      // mL/min
+
+    /* ── カードの色 ── */
+    const isNeg = prrHr < -0.005;
+    const cls   = isNeg ? 'negative' : 'neutral';
+    document.getElementById('card-hr').className  = 'result-card ' + cls;
+    document.getElementById('card-min').className = 'result-card ' + cls;
+
+    /* ── 数値表示 ── */
+    document.getElementById('prrHr').textContent  = prrHr.toFixed(1);
+    document.getElementById('prrMin').textContent = prrMin.toFixed(2);
+
+    /* ── 詳細 ── */
+    const methodLabel = currentMethod === 'div13'
+      ? `体重÷13`
+      : `体重×${pct}%`;
+    document.getElementById('d-method-tag').textContent     = methodLabel;
+    document.getElementById('d-bv0').textContent            = BV0.toFixed(0) + ' mL';
+    document.getElementById('d-deltaBV-val').textContent    = deltaBVml.toFixed(1) + ' mL';
+    document.getElementById('d-deltaBV-pct').textContent    = deltaBV.toFixed(1) + ' %';
+    document.getElementById('d-time').textContent           = time.toFixed(2) + ' 時間';
+
+    /* ── ノート ── */
+    const formulaLine = currentMethod === 'div13'
+      ? `※ 循環血液量 (BV₀) = 体重 ÷ 13 × 1000 mL`
+      : `※ 循環血液量 (BV₀) = 体重 × ${pct} % × 1000 mL`;
+    document.getElementById('result-note').innerHTML =
+      formulaLine + '<br>' +
+      '※ ΔBV(mL) = (ΔBV% ÷ 100) × BV₀<br>' +
+      '※ PRR = ΔBV ÷ 経過時間<br>' +
+      '※ 負の値：除水速度が血漿再充填速度を上回っている状態';
+
+    /* ── ステータスバッジ ── */
+    const badge = document.getElementById('status-badge');
+    const stTxt = document.getElementById('status-text');
+    if (isNeg) {
+      badge.className = 'status-badge dec';
+      stTxt.textContent = '血液量は減少傾向 ― 除水速度が血漿再充填速度を上回っています';
+    } else if (prrHr > 0.005) {
+      badge.className = 'status-badge inc';
+      stTxt.textContent = '血液量は増加傾向 ― 血漿再充填が除水を上回っています';
+    } else {
+      badge.className = 'status-badge zero';
+      stTxt.textContent = '血液量はほぼ安定しています';
+    }
+
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* ─── リセット ─── */
+  function resetAll() {
+    // 入力値をクリア
+    document.getElementById('deltaBV').value = '';
+    document.getElementById('time').value    = '';
+    document.getElementById('weight').value  = '';
+
+    // 符号をデフォルト（マイナス）に戻す
+    deltaBVNeg = true;
+    const btn = document.getElementById('sign-btn');
+    btn.textContent = '−';
+    btn.className   = 'sign-btn is-neg';
+
+    // エラー表示を消す
+    ['deltaBV', 'time', 'weight'].forEach(id => {
+      document.getElementById('f-' + id).classList.remove('has-error');
+    });
+
+    // BVプレビューを消す
+    document.getElementById('bv-preview').classList.remove('visible');
+
+    // 結果を非表示
+    document.getElementById('result').style.display = 'none';
+
+    // 先頭にスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* Enter キーで計算 */
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+  /* ─── Service Worker 登録 ─── */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.log('SW registration failed:', err));
+    });
+  }
+
+  /* ─── PWAとしてインストール済みならバッジを非表示 ─── */
+  if (window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true) {
+    const badge = document.getElementById('pwa-badge');
+    if (badge) badge.style.display = 'none';
+  }
+</script>
+</body>
+</html>
